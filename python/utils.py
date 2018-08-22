@@ -1,13 +1,17 @@
 import cPickle as pkl
-
+import sys
 import numpy as np
 import tensorflow as tf
-from itertools import islice
+import configparser
 from scipy.sparse import coo_matrix
+
+config = configparser.ConfigParser()
+config.read(sys.argv[1])
 
 DTYPE = tf.float32
 
-FIELD_SIZES = [0] * 15
+FIELD_SIZES = [0] * int(config['setup']['num_field'])
+index_lines = int(config['setup']['num_field']) - 1
 d_name_conf = {}
 FIELD_OFFSETS = []
 INPUT_DIM = 0
@@ -26,7 +30,7 @@ def initiate(path):
                 FIELD_SIZES[f] += 1
     FIELD_OFFSETS = [sum(FIELD_SIZES[:i]) for i in range(len(FIELD_SIZES))]
     INPUT_DIM = sum(FIELD_SIZES)
-    return INPUT_DIM, FIELD_OFFSETS
+    return INPUT_DIM, FIELD_OFFSETS, FIELD_SIZES
 
 def process_lines(lines, name, INPUT_DIM, FIELD_OFFSETS):
     model = name.split('_')[0]
@@ -46,7 +50,7 @@ def process_lines(lines, name, INPUT_DIM, FIELD_OFFSETS):
     else:
         return split_data((X, y), FIELD_OFFSETS)
 
-def read_data(file_name, read_data):
+def read_data(file_name, INPUT_DIM):
     X = []
     y = []
     with open(file_name) as fin:
@@ -79,7 +83,6 @@ def shuffle(data):
         np.random.shuffle(ind)
     return X[ind], y[ind]
 
-
 def libsvm_2_coo(libsvm_data, shape):
     coo_rows = []
     coo_cols = []
@@ -92,7 +95,6 @@ def libsvm_2_coo(libsvm_data, shape):
     coo_cols = np.array(coo_cols)
     coo_data = np.ones_like(coo_rows)
     return coo_matrix((coo_data, (coo_rows, coo_cols)), shape=shape)
-
 
 def csr_2_input(csr_mat):
     if not isinstance(csr_mat, list):
